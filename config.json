@@ -17,11 +17,11 @@
     "ignoreCommand": []
   },
   "developerOnly": {
-    "enable": true,
+    "enable": false,
     "ignoreCommand": []
   },
   "vipOnly": {
-    "enable": true,
+    "enable": false,
     "ignoreCommand": []
   },
   "adminBot": [

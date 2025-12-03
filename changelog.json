@@ -1,0 +1,4 @@
+{
+  "1.0": "Added basic VIP system: add, remove, list, and changelog commands.",
+  "1.1.0": "🕷️Improved Xass VIP notifications, added better UID validation, and enhanced formatting."
+}

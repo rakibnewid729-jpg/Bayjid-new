@@ -45,10 +45,12 @@ module.exports = {
             } catch (e) {}
 
             if (isCancel) {
-                api.removeUserFromGroup(api.getCurrentUserID(), targetThread);
-                api.sendMessage(`❌ This group was refused b ${userName}`, targetThread);
+                try {
+                    await api.removeUserFromGroup(api.getCurrentUserID(), targetThread);
+                } catch(e) {}
+                api.sendMessage(`❌ This group was refused by ${userName}`, targetThread);
             } else {
-                api.sendMessage(`✅ This group approved b ${userName`, targetThread);
+                api.sendMessage(`✅ This group approved by ${userName}`, targetThread);
             }
             count++;
         }
@@ -70,6 +72,7 @@ module.exports = {
             }
 
             if (list.length !== 0) {
+                if (!global.GoatBot.onReply) global.GoatBot.onReply = new Map(); // Ensure map exists
                 return api.sendMessage(getLang("returnListPending", list.length, msg), threadID, (err, info) => {
                     global.GoatBot.onReply.set(info.messageID, {
                         commandName,

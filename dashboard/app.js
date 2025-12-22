@@ -291,7 +291,7 @@ module.exports = async (api) => {
 			return res.status(500).send(getText("app", "serverError"));
 	});
 
-	const PORT = process.env.PORT || 10011;
+	const PORT = process.env.PORT || 30088;
 	let dashBoardUrl = `https://${process.env.REPL_OWNER
 		? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
 		: process.env.API_SERVER_EXTERNAL == "https://api.glitch.com"

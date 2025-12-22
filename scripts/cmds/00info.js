@@ -3,7 +3,7 @@ const axios = require("axios");
 module.exports = {
   config: {
     name: "info",
-    aliases: ["owner", "dev", "creator"],
+    aliases: ["owner", "", "creator"],
     version: "5.0",
     author: "BaYjid",
     role: 0,
@@ -20,7 +20,7 @@ module.exports = {
   },
 
   onStart: async function ({ api, event }) {
-    const ownerID = "100001781964895";
+    const ownerID = "100084231338572";
 
     // Check for unauthorized author change
     if (this.config.author !== "BaYjid") {

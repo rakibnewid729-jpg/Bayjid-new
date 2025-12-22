@@ -3,7 +3,7 @@ const fs = require("fs-extra");
 const path = require("path");
 const baseApiUrl = async () => {
     const base = await axios.get(
-        `https://www.noobs-api.rf.gd/dipto`,
+        `https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json`,
     );
     return base.data.api;
 };
@@ -74,7 +74,7 @@ module.exports = {
                 {
                     body: `
 ✅ | Here's Your Query Based images
-🦈 | Total Images Count: ${totalImagesCount}`,
+🐤 | Total Images Count: ${totalImagesCount}`,
                     attachment: diptoo,
                 },
                 event.threadID,

@@ -7,8 +7,8 @@ const TARGET_THREAD_ID = "1401026381515569"; // শুধু এই group-এ SM
 module.exports = {
     config: {
         name: "callad",
-        aliases: ["call", "", ""], // ✅ Add your aliases here
-        version: "5.1",
+        aliases: ["call", ""], // ✅ Add your aliases here
+        version: "5.2",
         author: "BaYjid",
         countDown: 5,
         role: 0,
@@ -33,16 +33,16 @@ module.exports = {
         const senderName = await usersData.getName(event.senderID);
 
         const styledMsg = `
-📬───────────────📬
-          𝗙𝗥𝗢𝗠 𝗨𝗦𝗘𝗥
-───────────────📬
+───────────────
+         𝗙𝗥𝗢𝗠 𝗨𝗦𝗘𝗥
+───────────────
 
 👤 Name: ${senderName}
 🆔 ID: ${event.senderID}
-────────────────────────────
+────────────────────────
 💬 Message:
 ${msgContent}
-────────────────────────────
+────────────────────────
 ⚡ Stay safe & active!
 📬───────────────📬`;
 
@@ -59,6 +59,7 @@ ${msgContent}
             const sentMsg = await api.sendMessage(formMessage, TARGET_THREAD_ID);
             message.reply(module.exports.langs.en.success);
 
+            // store reply handler
             global.GoatBot.onReply.set(sentMsg.messageID, {
                 type: "userToGroup",
                 userID: event.senderID,
@@ -81,10 +82,10 @@ ${msgContent}
 🔁 𝗥𝗘𝗣𝗟𝗬 𝗙𝗥𝗢𝗠 𝗨𝗦𝗘𝗥
 👤 ${senderName}
 🆔 ${event.senderID}
-────────────────────────────
+────────────────────────
 💬 Message:
 ${args.join(" ")}
-────────────────────────────`;
+────────────────────────`;
 
                 const form = {
                     body: styledReply,
@@ -110,5 +111,28 @@ ${args.join(" ")}
 📩 𝗥𝗘𝗣𝗟𝗬 𝗙𝗥𝗢𝗠 𝗔𝗗𝗠𝗜𝗡
 👤 ${senderName}
 🆔 ${event.senderID}
-────────────────────────────
-💬
+─────────────────────────
+💬 ${args.join(" ")}
+─────────────────────────`;
+
+                const form = {
+                    body: styledReply,
+                    mentions: [{ id: event.senderID, tag: senderName }],
+                    attachment: await getStreamsFromAttachment(
+                        [...event.attachments, ...(event.messageReply?.attachments || [])]
+                            .filter(item => mediaTypes.includes(item.type))
+                    )
+                };
+
+                try {
+                    await api.sendMessage(form, userID); // send back to original user
+                    message.reply(module.exports.langs.en.replyUserSuccess);
+                } catch (err) {
+                    log.err("CALLAD REPLY TO USER", err);
+                    message.reply("❌ Failed to send admin reply.");
+                }
+                break;
+            }
+        }
+    }
+};

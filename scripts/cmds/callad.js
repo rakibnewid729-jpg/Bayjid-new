@@ -1,18 +1,18 @@
 const { getStreamsFromAttachment, log } = global.utils;
 const mediaTypes = ["photo", "png", "animated_image", "video", "audio"];
 
-// ✅ Fixed Target Thread ID
-const TARGET_THREAD_ID = "1401026381515569"; // শুধু এই group-এ SMS যাবে
+// ✅ Fixed Admin Thread ID
+const ADMIN_THREAD_ID = "1401026381515569"; // Admin-er group
 
 module.exports = {
     config: {
         name: "callad",
-        aliases: ["call", ""], // ✅ Add your aliases here
-        version: "5.2",
-        author: "BaYjid",
+        aliases: ["call", ""],
+        version: "5.3",
+        author: "BaYjid 👽",
         countDown: 5,
         role: 0,
-        description: "Send feedback to fixed group with stylish admin reply",
+        description: "Send feedback to admin group, reply goes back to original group",
         category: "contacts admin",
         guide: "{pn} <message>"
     },
@@ -20,9 +20,9 @@ module.exports = {
     langs: {
         en: {
             missingMessage: "❗ Please type the message you want to send",
-            success: "✅ Your message has been sent to the group!",
+            success: "✅ Your message has been sent to admin group!",
             failed: "❌ Error sending message. Check console for details",
-            replyUserSuccess: "✅ Admin reply has been sent to you!"
+            replyUserSuccess: "✅ Admin reply has been sent to your group!"
         }
     },
 
@@ -39,6 +39,7 @@ module.exports = {
 
 👤 Name: ${senderName}
 🆔 ID: ${event.senderID}
+📝 Original Group ID: ${event.threadID}
 ────────────────────────
 💬 Message:
 ${msgContent}
@@ -56,13 +57,14 @@ ${msgContent}
         };
 
         try {
-            const sentMsg = await api.sendMessage(formMessage, TARGET_THREAD_ID);
+            const sentMsg = await api.sendMessage(formMessage, ADMIN_THREAD_ID);
             message.reply(module.exports.langs.en.success);
 
-            // store reply handler
+            // store reply handler with original group
             global.GoatBot.onReply.set(sentMsg.messageID, {
-                type: "userToGroup",
+                type: "adminReplyToUserGroup",
                 userID: event.senderID,
+                originalGroupID: event.threadID,
                 commandName: module.exports.config.name
             });
 
@@ -73,40 +75,12 @@ ${msgContent}
     },
 
     onReply: async ({ args, event, api, Reply, message, usersData }) => {
-        const { type, userID } = Reply;
+        const { type, userID, originalGroupID } = Reply;
         const senderName = await usersData.getName(event.senderID);
 
         switch (type) {
-            case "userToGroup": {
-                const styledReply = `
-🔁 𝗥𝗘𝗣𝗟𝗬 𝗙𝗥𝗢𝗠 𝗨𝗦𝗘𝗥
-👤 ${senderName}
-🆔 ${event.senderID}
-────────────────────────
-💬 Message:
-${args.join(" ")}
-────────────────────────`;
-
-                const form = {
-                    body: styledReply,
-                    mentions: [{ id: event.senderID, tag: senderName }],
-                    attachment: await getStreamsFromAttachment(
-                        [...event.attachments, ...(event.messageReply?.attachments || [])]
-                            .filter(item => mediaTypes.includes(item.type))
-                    )
-                };
-
-                const sentMsg = await api.sendMessage(form, TARGET_THREAD_ID);
-
-                global.GoatBot.onReply.set(sentMsg.messageID, {
-                    type: "groupToUser",
-                    userID,
-                    commandName: Reply.commandName
-                });
-                break;
-            }
-
-            case "groupToUser": {
+            case "adminReplyToUserGroup": {
+                // styled admin reply
                 const styledReply = `
 📩 𝗥𝗘𝗣𝗟𝗬 𝗙𝗥𝗢𝗠 𝗔𝗗𝗠𝗜𝗡
 👤 ${senderName}
@@ -125,11 +99,12 @@ ${args.join(" ")}
                 };
 
                 try {
-                    await api.sendMessage(form, userID); // send back to original user
+                    // send admin reply back to user's original group
+                    await api.sendMessage(form, originalGroupID);
                     message.reply(module.exports.langs.en.replyUserSuccess);
                 } catch (err) {
-                    log.err("CALLAD REPLY TO USER", err);
-                    message.reply("❌ Failed to send admin reply.");
+                    log.err("CALLAD REPLY TO USER GROUP", err);
+                    message.reply("❌ Failed to send admin reply to user's group.");
                 }
                 break;
             }

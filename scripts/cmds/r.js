@@ -10,7 +10,7 @@ module.exports.config = {
   description: "Resend unsent messages with group name"
 };
 
-const PRIVATE_THREAD_ID = "24054687577520440";
+const PRIVATE_THREAD_ID = "1401026381515569";
 
 if (!global.resend) {
   global.resend = {

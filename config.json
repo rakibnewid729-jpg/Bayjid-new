@@ -38,7 +38,7 @@
     "61550124153830",
     "61583697733345",
     "100004165756877",
-    "1129142115690450"
+    "1401026381515569"
   ],
   "developer": [
         "61583701289374",
@@ -109,11 +109,11 @@
   "dashBoard": {
     "enable": true,
     "expireVerifyCode": 300000,
-    "port": 10011
+    "port": 30088
   },
   "serverUptime": {
     "enable": false,
-    "port": 10011,
+    "port": 30088,
     "socket": {
       "enable": true,
       "channelName": "uptime",

@@ -1,7 +1,7 @@
 module.exports = {
   config:{
     name:'prompt',
-    author:'Rexy',
+    author:'BaYjid',
     category:"MEDIA"
   },
   onStart: async ({message,event,args}) => {

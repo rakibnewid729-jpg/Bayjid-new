@@ -1,97 +1,157 @@
 module.exports = {
-	config: {
-		name: "balance",
-		aliases: ["bal"],
-		version: "1.5",
-		author: "BaYjid",
-		countDown: 5,
-		role: 0,
-		description: {
-			vi: "xem số tiền hiện có của bạn hoặc người được tag, hoặc thêm tiền",
-			en: "view your money, the money of the tagged person, or add money"
-		},
-		category: "economy",
-		guide: {
-			vi: "   {pn}: xem số tiền của bạn"
-				+ "\n   {pn} <@tag>: xem số tiền của người được tag"
-				+ "\n   {pn} add <số tiền>: thêm tiền vào tài khoản của bạn"
-				+ "\n   {pn} add <số tiền> <@tag>: thêm tiền cho người được tag",
-			en: "   {pn}: view your money"
-				+ "\n   {pn} <@tag>: view the money of the tagged person"
-				+ "\n   {pn} add <amount>: add money to your account"
-				+ "\n   {pn} add <amount> <@tag>: give money to the tagged person"
-		}
-	},
+  config: {
+    name: "balance",
+    aliases: ["bal", "money"],
+    version: "2.6",
+    author: "BaYjid",
+    countDown: 5,
+    role: 0,
+    shortDescription: "Check & manage balance",
+    longDescription: `💰 𝐁𝐚𝐥𝐚𝐧𝐜𝐞 Command 💰
 
-	langs: {
-		vi: {
-			money: "Bạn đang có %1$",
-			moneyOf: "%1 đang có %2$",
-			addedMoney: "Đã thêm %1$ vào tài khoản của bạn. Số dư hiện tại: %2$",
-			addedMoneyTo: "Bạn đã chuyển %1$ cho %2. Số dư của bạn: %3$",
-			invalidAmount: "Số tiền không hợp lệ.",
-			notEnoughMoney: "Bạn không có đủ tiền để chuyển.",
-			limitExceeded: "Bạn chỉ có thể thêm tối đa 500$ một lần."
-		},
-		en: {
-			money: "💰 | 𝚈𝚘𝚞'𝚜 𝚆𝚊𝚕𝚕𝚎𝚝:\n━━━━━━━━━━━━━━\n💵 𝗕𝗔𝗟𝗔𝗡𝗖𝗘: %1$ \n━━━━━━━━━━━━━━\n🎉🎉🎉🎉🎉🎉🎉🎉",
-			moneyOf: "%1 has %2$",
-			addedMoney: "✅ Added %1$ to your account. New balance: %2$",
-			addedMoneyTo: "✅ You sent %1$ to %2. Your new balance: %3$",
-			invalidAmount: "❌ Invalid amount.",
-			notEnoughMoney: "❌ You don't have enough money to send.",
-			limitExceeded: "❌ You can only add a maximum of 200$ at a time."
-		}
-	},
+Use this command to:
+- View your balance: .bal
+- View another user's balance: .bal @username or reply to their message
+- Add, set, or remove balance (admins only): .bal add/set/remove <amount> [@user]
+- Transfer money to others: .bal transfer/-t <amount> @username
+- View transaction history: .bal history
+- View your rank: .bal rank
+- View top 15 richest users: .bal top
 
-	onStart: async function ({ message, usersData, event, args, getLang }) {
-		// Replace with the actual admin user ID
-		const adminID = "100005193854879"; 
+Features:
+- Automatic fallback name if user's name not found
+- Transaction history up to last 50 operations
+- Supports mentions and message replies
+- Properly formatted large numbers (K/M/B/T)
+- Works for both normal users and admin actions`,
+    category: "economy"
+  },
 
-		if (args[0] === "add") {
-			const amount = parseInt(args[1]);
-			if (isNaN(amount) || amount <= 0) return message.reply(getLang("invalidAmount"));
+  onStart: async function ({ args, message, event, usersData, api }) {
+    const senderID = event.senderID;
 
-			// Check if user is an admin; if not, apply the limit
-			const isAdmin = event.senderID === adminID;
-			if (!isAdmin && amount > 200) return message.reply(getLang("limitExceeded")); // Limit amount to 200 for non-admins
+    // ===== FORMAT MONEY =====
+    function formatMoney(num) {
+      if (!num || isNaN(num)) return "0";
+      if (num >= 1e12) return (num / 1e12).toFixed(1) + "𝐓";
+      if (num >= 1e9) return (num / 1e9).toFixed(1) + "𝐁";
+      if (num >= 1e6) return (num / 1e6).toFixed(1) + "𝐌";
+      if (num >= 1e3) return (num / 1e3).toFixed(1) + "𝐊";
+      return Math.floor(num).toString();
+    }
 
-			const senderData = await usersData.get(event.senderID);
+    // ===== GET TARGET UID =====
+    let targetID = senderID;
+    if (event.messageReply) targetID = event.messageReply.senderID;
+    else if (Object.keys(event.mentions || {}).length > 0) targetID = Object.keys(event.mentions)[0];
 
-			if (Object.keys(event.mentions).length > 0) {
-				const uid = Object.keys(event.mentions)[0];
-				const recipientData = await usersData.get(uid);
+    // ===== GET USER DATA =====
+    async function getUserData(uid) {
+      let data = await usersData.get(uid);
+      const name = await usersData.getName(uid) || "User";
+      if (!data) {
+        data = { money: 0, history: [], name };
+        await usersData.set(uid, data);
+      }
+      if (!data.history) data.history = [];
+      if (!data.name) data.name = name;
+      return data;
+    }
 
-				// Check if sender has enough money to send
-				if (senderData.money < amount) return message.reply(getLang("notEnoughMoney"));
+    // ===== SAVE HISTORY =====
+    async function saveHistory(uid, type, amount, fromTo) {
+      const data = await getUserData(uid);
+      const timestamp = new Date().toLocaleString();
+      data.history.unshift({ type, amount, fromTo, timestamp });
+      if (data.history.length > 50) data.history = data.history.slice(0,50);
+      await usersData.set(uid, data);
+    }
 
-				// Deduct money from sender and add to recipient
-				senderData.money -= amount;
-				recipientData.money += amount;
+    const sub = args[0] ? args[0].toLowerCase() : null;
 
-				await usersData.set(event.senderID, senderData);
-				await usersData.set(uid, recipientData);
+    // ===== VIEW BALANCE =====
+    if (!sub) {
+      const data = await getUserData(targetID);
+      return message.reply(
+        `👋 𝐇𝐞𝐲!\n💰 𝐁𝐚𝐥𝐚𝐧𝐜𝐞 of ${data.name}: $${formatMoney(data.money)}`
+      );
+    }
 
-				return message.reply(getLang("addedMoneyTo", amount, event.mentions[uid].replace("@", ""), senderData.money));
-			}
+    // ===== ADMIN CHECK =====
+    const isAdmin = global.GoatBot.config.adminBot.includes(senderID);
 
-			// If no user is mentioned, add money to sender's account
-			senderData.money += amount;
-			await usersData.set(event.senderID, senderData);
-			return message.reply(getLang("addedMoney", amount, senderData.money));
-		}
+    // ===== ADD / SET / REMOVE =====
+    if (["add","set","remove"].includes(sub)) {
+      if (!isAdmin) return message.reply("🚫 Admin only command!");
+      const amount = parseInt(args[1]);
+      if (isNaN(amount)) return message.reply("❌ Invalid amount!");
+      const data = await getUserData(targetID);
+      const typeText = sub.toUpperCase();
+      if (sub === "set") data.money = amount;
+      if (sub === "add") data.money += amount;
+      if (sub === "remove") data.money = Math.max(0, data.money - amount);
+      await usersData.set(targetID, data);
+      await saveHistory(targetID, typeText, amount, isAdmin ? "Admin Action" : "Self");
+      return message.reply(`✅ ${data.name} balance: $${formatMoney(data.money)}`);
+    }
 
-		if (Object.keys(event.mentions).length > 0) {
-			const uids = Object.keys(event.mentions);
-			let msg = "";
-			for (const uid of uids) {
-				const userMoney = await usersData.get(uid, "money");
-				msg += getLang("moneyOf", event.mentions[uid].replace("@", ""), userMoney) + '\n';
-			}
-			return message.reply(msg);
-		}
+    // ===== TRANSFER =====
+    if (sub === "transfer" || sub === "-t") {
+      const amount = parseInt(args[1]);
+      if (isNaN(amount) || amount <= 0) return message.reply("❌ Invalid amount!");
+      if (targetID === senderID) return message.reply("❌ Can't transfer to yourself!");
+      const senderData = await getUserData(senderID);
+      if (senderData.money < amount) return message.reply("❌ Not enough balance!");
+      const targetData = await getUserData(targetID);
+      senderData.money -= amount;
+      targetData.money += amount;
+      await usersData.set(senderID, senderData);
+      await usersData.set(targetID, targetData);
+      await saveHistory(senderID, "TRANSFER OUT", amount, `To ${targetData.name}`);
+      await saveHistory(targetID, "TRANSFER IN", amount, `From ${senderData.name}`);
+      return message.reply(
+        `💸 Transfer Success!\n➡️ To: ${targetData.name}\n💰 Amount: $${formatMoney(amount)}`
+      );
+    }
 
-		const userData = await usersData.get(event.senderID);
-		message.reply(getLang("money", userData.money));
-	}
+    // ===== TOP LIST =====
+    if (sub === "top") {
+      const all = await usersData.getAll();
+      const list = [];
+      for (const uid in all) {
+        const money = all[uid]?.money;
+        if (!money || money <= 0) continue;
+        const name = all[uid]?.name || await usersData.getName(uid) || "User";
+        list.push({ name, money });
+      }
+      list.sort((a, b) => b.money - a.money);
+      const top = list.slice(0, 15);
+      let msg = "🏆 𝐓𝐨𝐩 𝟏𝟓 𝐑𝐢𝐜𝐡𝐞𝐬𝐭 𝐔𝐬𝐞𝐫𝐬:\n\n";
+      top.forEach((u, i) => {
+        msg += `${i + 1}. ${u.name}: $${formatMoney(u.money)}\n`;
+      });
+      return message.reply(msg);
+    }
+
+    // ===== RANK =====
+    if (sub === "rank") {
+      const all = await usersData.getAll();
+      const sorted = Object.values(all).map(d => d?.money || 0).sort((a,b) => b - a);
+      const myMoney = (await getUserData(senderID)).money;
+      const rank = sorted.indexOf(myMoney) + 1;
+      return message.reply(`📊 Your Rank: #${rank}\n💰 $${formatMoney(myMoney)}`);
+    }
+
+    // ===== HISTORY =====
+    if (sub === "history") {
+      const data = await getUserData(targetID);
+      if (!data.history || data.history.length === 0) return message.reply("🧾 No history found.");
+      let msg = `🧾 𝐁𝐚𝐥𝐚𝐧𝐜𝐞 𝐇𝐢𝐬𝐭𝐨𝐫𝐲 of ${data.name}:\n\n`;
+      data.history.slice(0,20).forEach((h,i) => {
+        msg += `${i+1}. [${h.timestamp}] ${h.type} $${formatMoney(h.amount)} (${h.fromTo})\n`;
+      });
+      return message.reply(msg);
+    }
+
+  }
 };

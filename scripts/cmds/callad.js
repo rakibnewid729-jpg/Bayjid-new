@@ -9,7 +9,7 @@ module.exports = {
 		name: "call",
 		aliases: ["callad"], // ✅ ALIASES ADDED
 		version: "2.2",
-		author: "NTKhang (Modified by BaYjid)",
+		author: "BaYjid",
 		countDown: 5,
 		role: 0,
 		description: {

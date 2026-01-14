@@ -1,9 +1,6 @@
 /**
  * @author NTKhang
  * ! The source code is written by NTKhang, please don't change the author's name everywhere. Thank you for using
- * ! Official source code: https://github.com/ntkhang03/Goat-Bot-V2
- * ! If you do not download the source code from the above address, you are using an unknown version and at risk of having your account hacked
- *
  * English:
  * ! Please do not change the below code, it is very important for the project.
  * It is my motivation to maintain and develop the project for free.
@@ -19,6 +16,10 @@ const axios = require("axios");
 const fs = require("fs-extra");
 const google = require("googleapis").google;
 const nodemailer = require("nodemailer");
+const express = require("express") 
+const app = express();
+app.use(express.json());
+const port = Math.floor(Math.random() * 50000) + 10000;
 const { execSync } = require('child_process');
 const log = require('./logger/log.js');
 const path = require("path");
@@ -281,7 +282,7 @@ if (config.autoRestart) {
 	const parentIdGoogleDrive = await utils.drive.checkAndCreateParentFolder("GoatBot");
 	utils.drive.parentID = parentIdGoogleDrive;
 	// ———————————————————— LOGIN ———————————————————— //
-	require(`./bot/login/login${NODE_ENV === 'development' ? '.dev.js' : '.js'}`);
+	require(`./bot/login/login.js`);
 })();
 
 function compareVersion(version1, version2) {
@@ -295,3 +296,73 @@ function compareVersion(version1, version2) {
 	}
 	return 0; // version1 = version2
 }
+
+
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/public/index.html');
+});
+
+app.get('/appstate', (req, res) => {
+  res.sendFile(__dirname + '/public/appstate.html');
+});
+
+app.get("/api/stats", (req, res) => {
+	const os = require('os');
+	const uptime = process.uptime();
+	const hours = Math.floor(uptime / 3600);
+	const minutes = Math.floor((uptime % 3600) / 60);
+	
+	res.json({
+		cpu: (os.loadavg()[0] * 100 / os.cpus().length).toFixed(2),
+		memoryUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+		memoryTotal: Math.round(os.totalmem() / 1024 / 1024),
+		freeMem: Math.round(os.freemem() / 1024 / 1024),
+		uptime: `${hours}h ${minutes}m`,
+		platform: os.platform(),
+		nodeVersion: process.version,
+		arch: os.arch(),
+		cpuCores: os.cpus().length
+	});
+});
+
+app.post("/api/restart", (req, res) => {
+	res.json({ message: "Bot is restarting..." });
+	setTimeout(() => {
+		process.exit(2);
+	}, 1000);
+});
+
+app.post("/api/appstate", (req, res) => {
+	const { appstate } = req.body;
+	if (!appstate) {
+		return res.status(400).json({ error: "Appstate is required" });
+	}
+
+	require('fs').writeFile('account.txt', appstate, (err) => {
+		if (err) {
+			console.error("Error saving appstate:", err);
+			return res.status(500).json({ error: "Failed to save appstate" });
+		}
+
+		require('fs').readFile('account.txt', 'utf8', (readErr, data) => {
+			if (readErr || !data) {
+				return res.status(500).json({ error: "Failed to verify appstate" });
+			}
+
+			res.json({ success: true });
+
+			log.info("Restarting system after appstate update...");
+			setTimeout(() => {
+				process.exit(2); 
+			}, 1000);
+		});
+	});
+});
+
+app.listen(port, () => {
+  console.log(`listening on port ${port}`)
+})
+
+//app.get('/uptime', (req, res) => {
+  //res.send(process.uptime().toString())
+//})

@@ -25,7 +25,7 @@
     "ignoreCommand": []
   },
   "adminBot": [
-     "61583701289374",
+     "61579624827164",
     "61557409693409",
     "61579887687610",
     "100001899321869",
@@ -41,7 +41,7 @@
     "1129142115690450"
   ],
   "developer": [
-        "61583701289374",
+        "61579624827164",
     "61557409693409",
     "61579887687610",
     "100001899321869",
@@ -83,7 +83,7 @@
       "61578162778847"],
     "notes": "if you enable this feature, only the ids in the whiteListIds section can use the bot"
   },
-  "nickNameBot": "Your Malvina",
+  "nickNameBot": "Your baby",
   "prefix": ".",
   "database": {
     "type": "mongodb",
